@@ -17,7 +17,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProjectDir = Split-Path $PSScriptRoot -Parent
-$DevcontainerDir = Join-Path $ProjectDir ".devcontainer" "generacy"
+$DevcontainerDir = Join-Path (Join-Path $ProjectDir ".devcontainer") "generacy"
 $GeneracyDir = $PSScriptRoot
 $ConfigFile = Join-Path $GeneracyDir "config.yaml"
 
