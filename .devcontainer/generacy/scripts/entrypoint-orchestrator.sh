@@ -31,6 +31,7 @@ install_packages() {
         "@generacy-ai/generacy@${CHANNEL}" \
         "@generacy-ai/agency@${CHANNEL}" \
         "@generacy-ai/agency-plugin-spec-kit@${CHANNEL}" \
+        "@generacy-ai/cluster-relay@${CHANNEL}" \
         2>>"$SETUP_LOG" || { log "ERROR: npm install failed"; exit 1; }
     # Write marker: channel + installed version of generacy
     local version
