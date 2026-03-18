@@ -43,14 +43,6 @@ install_packages() {
 SETUP_LOG="${SETUP_LOG:-/tmp/generacy-setup.log}"
 if [ "${SKIP_PACKAGE_UPDATE:-false}" = "true" ]; then
     log "SKIP_PACKAGE_UPDATE=true — skipping npm install"
-elif [ -f "${MARKER_FILE}" ]; then
-    MARKER=$(cat "${MARKER_FILE}")
-    if [ "${MARKER%:*}" = "${CHANNEL}" ]; then
-        log "Packages already installed for channel '${CHANNEL}' (${MARKER#*:}) — skipping"
-    else
-        log "Channel changed from '${MARKER%:*}' to '${CHANNEL}' — reinstalling"
-        install_packages
-    fi
 else
     install_packages
 fi
