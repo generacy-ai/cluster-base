@@ -319,14 +319,76 @@ Write-Host "    .devcontainer/generacy/.env          - Docker Compose settings (
 Write-Host "    .devcontainer/generacy/.env.local    - secrets (gitignored, never commit)"
 Write-Host "    .devcontainer/generacy/devcontainer.json - updated with project values"
 Write-Host ""
-Write-Host "  Next steps:"
-Write-Host "    1. Open this project in VS Code"
-Write-Host "    2. VS Code will prompt: 'Reopen in Container' -- select 'generacy'"
-Write-Host "    3. Or run manually: cd .devcontainer/generacy; docker compose up -d"
-Write-Host ""
 if ($SmeeChannelUrl) {
     Write-Host "  Webhook forwarding:"
     Write-Host "    Add this URL as a webhook in your GitHub repo settings:"
     Write-Host "    $SmeeChannelUrl"
     Write-Host ""
 }
+
+# -- Step 10: Offer to commit and push ----------------------------------------
+
+$doCommit = Read-Host "  ? Would you like to commit and push the configuration changes? [y/N]"
+
+if ($doCommit -eq "y" -or $doCommit -eq "Y") {
+    Write-Info "Committing configuration changes..."
+
+    Push-Location $ProjectDir
+
+    # Stage only safe files (never .env.local)
+    $safeFiles = @(
+        ".generacy/config.yaml",
+        ".devcontainer/generacy/.env",
+        ".devcontainer/generacy/devcontainer.json",
+        ".devcontainer/generacy/.gitignore"
+    )
+
+    $stagedCount = 0
+    foreach ($f in $safeFiles) {
+        if (Test-Path $f) {
+            git add $f
+            Write-Ok "Staged $f"
+            $stagedCount++
+        }
+    }
+
+    if ($stagedCount -eq 0) {
+        Write-Warn "No files to commit"
+    } else {
+        git commit -m "chore: configure generacy cluster for $ProjectName"
+        Write-Ok "Committed configuration changes"
+
+        $doPush = Read-Host "  ? Push to origin/$RepoBranch? [y/N]"
+        if ($doPush -eq "y" -or $doPush -eq "Y") {
+            $currentBranch = git symbolic-ref --short HEAD
+            git push origin $currentBranch
+            Write-Ok "Pushed to origin"
+        } else {
+            Write-Info "Skipping push - you can push later with: git push"
+        }
+    }
+
+    Pop-Location
+}
+
+# -- Step 11: Offer to start the cluster ---------------------------------------
+
+Write-Host ""
+$doStart = Read-Host "  ? Would you like to start the cluster now? [y/N]"
+
+if ($doStart -eq "y" -or $doStart -eq "Y") {
+    Write-Info "Starting cluster..."
+    Push-Location $DevcontainerDir
+    docker compose up -d
+    Pop-Location
+    Write-Ok "Cluster started!"
+    Write-Host ""
+    Write-Host "  You can also open this project in VS Code and select 'Reopen in Container'."
+} else {
+    Write-Host ""
+    Write-Host "  Next steps:"
+    Write-Host "    1. Open this project in VS Code"
+    Write-Host "    2. VS Code will prompt: 'Reopen in Container' -- select 'generacy'"
+    Write-Host "    3. Or run manually: cd .devcontainer/generacy; docker compose up -d"
+}
+Write-Host ""

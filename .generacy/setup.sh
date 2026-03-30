@@ -342,14 +342,74 @@ echo "    .devcontainer/generacy/.env          — Docker Compose settings (comm
 echo "    .devcontainer/generacy/.env.local    — secrets (gitignored, never commit)"
 echo "    .devcontainer/generacy/devcontainer.json — updated with project values"
 echo ""
-echo "  Next steps:"
-echo "    1. Open this project in VS Code"
-echo "    2. VS Code will prompt: 'Reopen in Container' — select 'generacy'"
-echo "    3. Or run manually: cd .devcontainer/generacy && docker compose up -d"
-echo ""
 if [ -n "$SMEE_CHANNEL_URL" ]; then
     echo "  Webhook forwarding:"
     echo "    Add this URL as a webhook in your GitHub repo settings:"
     echo "    $SMEE_CHANNEL_URL"
     echo ""
 fi
+
+# ── Step 10: Offer to commit and push ───────────────────────────────────────
+
+ask "Would you like to commit and push the configuration changes? [y/N]:"
+read -r do_commit
+
+if [ "${do_commit}" = "y" ] || [ "${do_commit}" = "Y" ]; then
+    info "Committing configuration changes..."
+
+    cd "$PROJECT_DIR"
+
+    # Stage only safe files (never .env.local)
+    SAFE_FILES=(
+        ".generacy/config.yaml"
+        ".devcontainer/generacy/.env"
+        ".devcontainer/generacy/devcontainer.json"
+        ".devcontainer/generacy/.gitignore"
+    )
+
+    staged_count=0
+    for f in "${SAFE_FILES[@]}"; do
+        if [ -f "$f" ]; then
+            git add "$f"
+            ok "Staged $f"
+            staged_count=$((staged_count + 1))
+        fi
+    done
+
+    if [ "$staged_count" -eq 0 ]; then
+        warn "No files to commit"
+    else
+        git commit -m "chore: configure generacy cluster for ${PROJECT_NAME}"
+        ok "Committed configuration changes"
+
+        ask "Push to origin/${REPO_BRANCH}? [y/N]:"
+        read -r do_push
+        if [ "${do_push}" = "y" ] || [ "${do_push}" = "Y" ]; then
+            git push origin "$(git symbolic-ref --short HEAD)"
+            ok "Pushed to origin"
+        else
+            info "Skipping push — you can push later with: git push"
+        fi
+    fi
+fi
+
+# ── Step 11: Offer to start the cluster ─────────────────────────────────────
+
+echo ""
+ask "Would you like to start the cluster now? [y/N]:"
+read -r do_start
+
+if [ "${do_start}" = "y" ] || [ "${do_start}" = "Y" ]; then
+    info "Starting cluster..."
+    cd "${DEVCONTAINER_DIR}" && docker compose up -d
+    ok "Cluster started!"
+    echo ""
+    echo "  You can also open this project in VS Code and select 'Reopen in Container'."
+else
+    echo ""
+    echo "  Next steps:"
+    echo "    1. Open this project in VS Code"
+    echo "    2. VS Code will prompt: 'Reopen in Container' — select 'generacy'"
+    echo "    3. Or run manually: cd .devcontainer/generacy && docker compose up -d"
+fi
+echo ""
