@@ -20,7 +20,7 @@ source /usr/local/bin/load-cluster-config.sh
 
 # Install generacy/agency packages into shared volume
 SHARED_PACKAGES=/shared-packages
-CHANNEL="${GENERACY_CHANNEL:-stable}"
+CHANNEL="${GENERACY_CHANNEL:-preview}"
 MARKER_FILE="${SHARED_PACKAGES}/.installed-version"
 
 install_packages() {

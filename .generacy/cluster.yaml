@@ -4,7 +4,7 @@
 # The orchestrator reads it on startup; changes take effect on restart
 # (or immediately for settings the orchestrator watches at runtime).
 
-channel: stable          # preview | stable — determines package versions and update source
+channel: preview         # preview | stable — determines package versions and update source
 
 workers:
   count: 3               # number of worker containers
