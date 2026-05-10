@@ -50,8 +50,12 @@ fi
 # Add shared packages to PATH for this process
 export PATH="${SHARED_PACKAGES}/node_modules/.bin:${PATH}"
 
-# Run generacy setup if CLI is available
-if command -v generacy >/dev/null 2>&1; then
+# Run generacy setup if CLI is available.
+# In wizard mode the workspace isn't cloned yet (credentials arrive post-activation),
+# so workspace/build steps are deferred to entrypoint-post-activation.sh.
+if [ "${GENERACY_BOOTSTRAP_MODE:-devcontainer}" = "wizard" ]; then
+    log "Wizard mode — skipping pre-activation generacy setup; will run after activation"
+elif command -v generacy >/dev/null 2>&1; then
     SETUP_LOG="/tmp/generacy-setup.log"
     log "Running generacy setup..."
 
@@ -74,8 +78,9 @@ if command -v generacy >/dev/null 2>&1; then
     }
 fi
 
-# Light check: warn if speckit is missing (orchestrator can still run)
-if [ -x "/usr/local/bin/setup-speckit.sh" ]; then
+# Light check: warn if speckit is missing (orchestrator can still run).
+# Skip in wizard mode — speckit lives in the not-yet-cloned workspace.
+if [ "${GENERACY_BOOTSTRAP_MODE:-devcontainer}" != "wizard" ] && [ -x "/usr/local/bin/setup-speckit.sh" ]; then
     if ! bash /usr/local/bin/setup-speckit.sh --verify 2>/dev/null; then
         log "WARNING: Speckit commands not available. Workers may fail to process phases."
     fi
