@@ -50,6 +50,7 @@ services:
       - ORCHESTRATOR_PORT=${ORCHESTRATOR_PORT:-3100}
       - WORKSPACE_DIR=${WORKSPACE_DIR:-}
       - GENERACY_CHANNEL=${GENERACY_CHANNEL:-stable}
+      - GENERACY_BOOTSTRAP_MODE=${GENERACY_BOOTSTRAP_MODE:-devcontainer}
       - SKIP_PACKAGE_UPDATE=${SKIP_PACKAGE_UPDATE:-false}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${ORCHESTRATOR_PORT:-3100}/health"]
@@ -110,6 +111,7 @@ services:
       - HEALTH_PORT=9001
       - WORKSPACE_DIR=${WORKSPACE_DIR:-}
       - GENERACY_CHANNEL=${GENERACY_CHANNEL:-stable}
+      - GENERACY_BOOTSTRAP_MODE=${GENERACY_BOOTSTRAP_MODE:-devcontainer}
       - SKIP_PACKAGE_UPDATE=${SKIP_PACKAGE_UPDATE:-false}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
