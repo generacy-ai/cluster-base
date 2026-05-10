@@ -86,6 +86,18 @@ if [ "${GENERACY_BOOTSTRAP_MODE:-devcontainer}" != "wizard" ] && [ -x "/usr/loca
     fi
 fi
 
+# Wizard mode: arm the post-activation hook.
+# Spawns a background watcher that fires entrypoint-post-activation.sh when
+# the bootstrap-complete sentinel appears. The trigger contract is documented
+# in post-activation-watcher.sh — control-plane (generacy-cloud#532) creates
+# the sentinel after persisting wizard-delivered credentials.
+if [ "${GENERACY_BOOTSTRAP_MODE:-devcontainer}" = "wizard" ]; then
+    POST_ACTIVATION_TRIGGER="${POST_ACTIVATION_TRIGGER:-/tmp/generacy-bootstrap-complete}"
+    log "Arming post-activation watcher (trigger: ${POST_ACTIVATION_TRIGGER})"
+    POST_ACTIVATION_TRIGGER="${POST_ACTIVATION_TRIGGER}" \
+        bash /usr/local/bin/post-activation-watcher.sh &
+fi
+
 # Wait for Redis to be ready
 log "Waiting for Redis at ${REDIS_HOST:-redis}:6379..."
 while ! nc -z "${REDIS_HOST:-redis}" 6379 2>/dev/null; do

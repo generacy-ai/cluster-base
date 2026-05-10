@@ -2,13 +2,18 @@
 # Post-activation entrypoint — runs once after the bootstrap wizard hands
 # credentials to the cluster (GENERACY_BOOTSTRAP_MODE=wizard flow).
 #
-# Status: skeleton. Not yet wired to a trigger. Invoke manually inside a
-# running orchestrator container after the wizard completes:
+# Trigger:
+#   entrypoint-orchestrator.sh spawns post-activation-watcher.sh in wizard
+#   mode. The watcher polls a sentinel file (default
+#   /tmp/generacy-bootstrap-complete) and runs this script when the file
+#   appears. Control-plane creates the sentinel as part of its
+#   bootstrap-complete lifecycle handler (generacy-cloud#532).
 #
-#   docker compose exec orchestrator /usr/local/bin/entrypoint-post-activation.sh
+#   For local testing, create the sentinel manually:
+#     docker compose exec orchestrator touch /tmp/generacy-bootstrap-complete
 #
-# The trigger (control-plane endpoint, file watch, or in-process hook fired
-# when activation succeeds) is tracked as a follow-up — see issue #20.
+#   Or invoke this script directly (bypassing the watcher):
+#     docker compose exec orchestrator /usr/local/bin/entrypoint-post-activation.sh
 #
 # Steps:
 #   1. Re-run setup-credentials.sh now that GH_TOKEN / friends are populated.
