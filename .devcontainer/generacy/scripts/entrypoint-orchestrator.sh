@@ -32,6 +32,7 @@ install_packages() {
         "@generacy-ai/agency@${CHANNEL}" \
         "@generacy-ai/agency-plugin-spec-kit@${CHANNEL}" \
         "@generacy-ai/cluster-relay@${CHANNEL}" \
+        "@generacy-ai/control-plane@${CHANNEL}" \
         2>>"$SETUP_LOG" || { log "ERROR: npm install failed"; exit 1; }
     # Write marker: channel + installed version of generacy
     local version
@@ -104,6 +105,34 @@ while ! nc -z "${REDIS_HOST:-redis}" 6379 2>/dev/null; do
     sleep 1
 done
 log "Redis is ready"
+
+# Start the in-cluster control-plane daemon. It owns the unix socket the
+# orchestrator's StatusReporter writes to AND serves the /control-plane/*
+# routes that the cloud relay forwards (e.g. PUT /control-plane/credentials/:id
+# during the bootstrap wizard's "Install GitHub App" step).
+CONTROL_PLANE_SOCKET_PATH="${CONTROL_PLANE_SOCKET_PATH:-/run/generacy-control-plane/control.sock}"
+export CONTROL_PLANE_SOCKET_PATH
+CONTROL_PLANE_LOG="${CONTROL_PLANE_LOG:-/tmp/control-plane.log}"
+
+if [ -x "${SHARED_PACKAGES}/node_modules/.bin/control-plane" ]; then
+    log "Starting control-plane daemon (socket: ${CONTROL_PLANE_SOCKET_PATH}, log: ${CONTROL_PLANE_LOG})"
+    "${SHARED_PACKAGES}/node_modules/.bin/control-plane" >>"${CONTROL_PLANE_LOG}" 2>&1 &
+
+    # Wait for the socket so the orchestrator's first StatusReporter push lands
+    # cleanly. Bounded so a wedged daemon doesn't block startup forever — if
+    # the socket never appears we log and continue; StatusReporter will retry.
+    for _ in $(seq 1 50); do
+        [ -S "${CONTROL_PLANE_SOCKET_PATH}" ] && break
+        sleep 0.2
+    done
+    if [ -S "${CONTROL_PLANE_SOCKET_PATH}" ]; then
+        log "Control-plane socket ready"
+    else
+        log "WARNING: control-plane socket not ready after 10s (see ${CONTROL_PLANE_LOG})"
+    fi
+else
+    log "WARNING: control-plane binary not found in ${SHARED_PACKAGES}/node_modules/.bin/ — relay-forwarded /control-plane/* requests will 404"
+fi
 
 # Start orchestrator as PID 1
 log "Starting orchestrator on port ${ORCHESTRATOR_PORT:-3100}..."
