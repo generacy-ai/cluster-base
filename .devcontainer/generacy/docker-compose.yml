@@ -25,6 +25,9 @@ services:
     command: /usr/local/bin/entrypoint-orchestrator.sh
     user: node
     restart: unless-stopped
+    tmpfs:
+      # in-cluster control-plane HTTP service socket, owned by the node uid
+      - /run/generacy-control-plane:mode=1750,uid=1000,gid=1000
     stop_grace_period: 30s
     volumes:
       # Clone mode: persistent volume avoids host mount issues (especially on Windows)
