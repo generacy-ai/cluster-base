@@ -57,6 +57,6 @@ if [ -n "${REPO_URL:-}" ] && [ ! -d "${WORKSPACE_DIR}/.git" ]; then
 elif [ -d "${WORKSPACE_DIR}/.git" ]; then
     log "Project repo already cloned, pulling latest..."
     cd "${WORKSPACE_DIR}"
-    git fetch origin
+    git fetch origin 2>/dev/null || true
     git pull --ff-only origin "${REPO_BRANCH:-main}" 2>/dev/null || true
 fi
