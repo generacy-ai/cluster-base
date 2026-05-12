@@ -41,6 +41,11 @@ services:
       - shared-packages:/shared-packages
       # npm cache persistence (speeds up repeated installs)
       - npm-cache:/home/node/.npm
+      # VS Code CLI auth state — survives `docker compose down && up` so the
+      # tunnel (started by control-plane's vscode-tunnel-start lifecycle action)
+      # doesn't re-prompt for GitHub device-code auth on every cluster recreate.
+      # Orchestrator only — the tunnel daemon never runs on workers.
+      - vscode-cli:/home/node/.vscode-cli
     env_file:
       - path: .env
       - path: .env.local
@@ -160,6 +165,8 @@ volumes:
   npm-cache:
   # Credentials state: cluster-local sealed credential store and master.key
   generacy-data:
+  # VS Code CLI auth state for the orchestrator's `code tunnel` daemon
+  vscode-cli:
 
 networks:
   # Isolated cluster network
