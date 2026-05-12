@@ -31,6 +31,18 @@ log() {
 
 log "Starting post-activation setup..."
 
+# Source wizard-delivered credentials (written by control-plane's
+# bootstrap-complete handler — see generacy-ai/generacy#589).
+# set -a auto-exports each assigned variable so child processes inherit them.
+WIZARD_CREDS="${WIZARD_CREDS_PATH:-/var/lib/generacy/wizard-credentials.env}"
+if [ -f "$WIZARD_CREDS" ]; then
+    log "Sourcing wizard credentials from $WIZARD_CREDS"
+    set -a
+    # shellcheck disable=SC1090
+    source "$WIZARD_CREDS"
+    set +a
+fi
+
 # Step 1: configure git/gh credentials from the env vars the wizard delivered
 bash /usr/local/bin/setup-credentials.sh
 
