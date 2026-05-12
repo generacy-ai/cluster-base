@@ -110,6 +110,13 @@ log "Redis is ready"
 # orchestrator's StatusReporter writes to AND serves the /control-plane/*
 # routes that the cloud relay forwards (e.g. PUT /control-plane/credentials/:id
 # during the bootstrap wizard's "Install GitHub App" step).
+
+# Shared internal-API key so the control-plane process can POST events back
+# to the orchestrator's /internal/relay-events endpoint, which then forwards
+# them through the cluster-relay client. See generacy-ai/generacy#594.
+# Generated per-boot — never persisted, never leaves the container.
+export ORCHESTRATOR_INTERNAL_API_KEY="$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)"
+
 CONTROL_PLANE_SOCKET_PATH="${CONTROL_PLANE_SOCKET_PATH:-/run/generacy-control-plane/control.sock}"
 export CONTROL_PLANE_SOCKET_PATH
 CONTROL_PLANE_LOG="${CONTROL_PLANE_LOG:-/tmp/control-plane.log}"
