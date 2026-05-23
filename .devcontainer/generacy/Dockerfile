@@ -72,8 +72,33 @@ RUN set -eu; \
           done
 USER root
 
-# -- Stage 3: Final image -----------------------------------------------------
-FROM tooling AS final
+# -- Stage 3: Docker CLI + Compose plugin (no daemon) -------------------------
+# cluster-base talks to the host's docker daemon via a mounted socket
+# (/var/run/docker-host.sock) — it never runs its own dockerd. We install only
+# the CLI + compose plugin so the orchestrator's worker-scale lifecycle handler
+# can shell out to `docker compose up -d --scale worker=N`. The daemon package
+# (docker-ce) and DinD sudoers wiring used by cluster-microservices are
+# deliberately omitted here.
+FROM tooling AS docker-cli
+
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+        | tee /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        docker-ce-cli docker-compose-plugin \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create the `docker` group and add node (uid 1000) so it can read/write the
+# host socket mounted at /var/run/docker-host.sock. The daemon package
+# (docker-ce) normally creates this group via its postinst; since we install
+# only docker-ce-cli, we have to create it ourselves. The GID is arbitrary at
+# build time — alignment with the host socket's GID is a runtime concern.
+RUN groupadd --system docker \
+ && usermod -aG docker node
+
+# -- Stage 4: Final image -----------------------------------------------------
+FROM docker-cli AS final
 
 # Copy entrypoint scripts
 COPY --chmod=755 scripts/ /usr/local/bin/
