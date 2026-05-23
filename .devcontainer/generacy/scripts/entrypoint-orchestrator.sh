@@ -8,6 +8,26 @@ log() {
 
 log "Starting orchestrator setup..."
 
+# Fix mounted host docker socket permissions. The socket appears in the
+# container with the host's docker group GID, which doesn't match the in-
+# container `docker` group and isn't predictable across hosts (varies on
+# Debian, macOS via Docker Desktop, WSL2, etc.). Without this, docker CLI
+# calls from the node user (e.g. the worker-scale lifecycle action) get
+# EACCES. The Dockerfile grants a narrow sudoers entry that allows exactly
+# this chmod and nothing else. Idempotent and best-effort: if the socket
+# isn't mounted (unusual), or the chmod fails, the orchestrator still
+# starts — worker-scale will surface a clearer error later.
+HOST_DOCKER_SOCK="/var/run/docker-host.sock"
+if [ -S "$HOST_DOCKER_SOCK" ]; then
+    if sudo /usr/bin/chmod 666 "$HOST_DOCKER_SOCK" 2>/dev/null; then
+        log "Fixed host docker socket permissions ($HOST_DOCKER_SOCK)"
+    else
+        log "WARNING: could not chmod $HOST_DOCKER_SOCK — worker-scale may fail with EACCES"
+    fi
+else
+    log "WARNING: host docker socket not mounted at $HOST_DOCKER_SOCK — worker-scale will not work"
+fi
+
 # Source wizard-delivered credentials persisted by a prior bootstrap
 # (written by control-plane's bootstrap-complete handler — see
 # generacy-ai/generacy#589). On restarts of an already-bootstrapped

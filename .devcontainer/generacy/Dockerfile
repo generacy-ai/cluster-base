@@ -89,13 +89,31 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
         docker-ce-cli docker-compose-plugin \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create the `docker` group and add node (uid 1000) so it can read/write the
-# host socket mounted at /var/run/docker-host.sock. The daemon package
+# Create the `docker` group and add node (uid 1000). The daemon package
 # (docker-ce) normally creates this group via its postinst; since we install
-# only docker-ce-cli, we have to create it ourselves. The GID is arbitrary at
-# build time — alignment with the host socket's GID is a runtime concern.
+# only docker-ce-cli, we have to create it ourselves. Group membership alone
+# is not enough — the mounted host socket arrives with the host's docker GID
+# (not predictable across hosts), so the entrypoint fixes its mode at startup
+# (see scripts/entrypoint-orchestrator.sh). Sudoers entry below is the narrow
+# privilege that makes that runtime fix possible.
 RUN groupadd --system docker \
  && usermod -aG docker node
+
+# Narrow sudoers grant: node may chmod *only* the mounted host docker socket.
+# Required because the socket inherits the host's docker GID, which doesn't
+# match the in-container `docker` group GID and isn't predictable. cluster-
+# microservices solves the same problem the same way (see its setup-docker-
+# dind.sh `sudo chmod 666 "$HOST_SOCKET"` block). Scoped to chmod-this-path
+# only — does not grant general sudo.
+RUN echo "node ALL=(root) NOPASSWD: /usr/bin/chmod 666 /var/run/docker-host.sock" \
+        > /etc/sudoers.d/docker-host-socket \
+ && chmod 0440 /etc/sudoers.d/docker-host-socket
+
+# Default DOCKER_HOST to the mounted host socket. cluster-base has no DinD
+# daemon, so any `docker` invocation (worker-scale, ad-hoc `docker ps` in a
+# code-server terminal, etc.) should target the host's docker daemon by
+# default. worker-scaler.ts also reads DOCKER_HOST when spawning compose.
+ENV DOCKER_HOST=unix:///var/run/docker-host.sock
 
 # -- Stage 4: Final image -----------------------------------------------------
 FROM docker-cli AS final
