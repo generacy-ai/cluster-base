@@ -118,7 +118,10 @@ ENV DOCKER_HOST=unix:///var/run/docker-host.sock
 # -- Stage 4: Final image -----------------------------------------------------
 FROM docker-cli AS final
 
-# Copy entrypoint scripts
+# Copy entrypoint scripts. This also installs the JIT `gh` wrapper
+# (scripts/gh, generacy-ai/cluster-base#66) at /usr/local/bin/gh, which precedes
+# /usr/bin/gh on PATH and so shadows the real gh — minting a fresh token per
+# invocation instead of riding the static, expiring GH_TOKEN.
 COPY --chmod=755 scripts/ /usr/local/bin/
 
 # Create workspaces directory with node ownership
@@ -183,6 +186,21 @@ RUN mkdir -p /run/generacy-git-token \
 # orchestrator service.
 RUN mkdir -p /home/node/.vscode/cli \
  && chown -R node:node /home/node/.vscode
+
+# Ship default code-server settings (generacy-ai/cluster-base#66): disable VS
+# Code's built-in git/GitHub credential management so that attaching code-server
+# (or VS Code) to the orchestrator does NOT rewrite ~/.gitconfig back to the
+# gh-CLI credential helper + a static ~/.git-credentials token — which would
+# clobber the JIT git credential helper installed by setup-credentials.sh and
+# then expire ~1h later. code-server reads User settings from
+# <user-data-dir>/User/settings.json; the default user-data-dir is
+# ~/.local/share/code-server (this cluster passes no --user-data-dir override).
+# The dir is pre-created during the extension install above; create+chown is the
+# idempotent guard so the COPY lands node-owned.
+RUN mkdir -p /home/node/.local/share/code-server/User \
+ && chown -R node:node /home/node/.local/share/code-server
+COPY --chown=node:node code-server-settings.json \
+     /home/node/.local/share/code-server/User/settings.json
 
 # +============================================================================+
 # |  Customize below: add your project's system dependencies                    |
