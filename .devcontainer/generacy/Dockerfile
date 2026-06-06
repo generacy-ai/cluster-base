@@ -202,6 +202,19 @@ RUN mkdir -p /home/node/.local/share/code-server/User \
 COPY --chown=node:node code-server-settings.json \
      /home/node/.local/share/code-server/User/settings.json
 
+# Seed the SAME defaults for the Microsoft VS Code Server — the server launched
+# by `code tunnel`, which is what cloud clusters actually run when a user
+# attaches (NOT Coder code-server above). It reads machine-scoped defaults from
+# ~/.vscode-server/data/Machine/settings.json. This is best-effort: it enforces
+# the machine-scoped knobs (git.terminalAuthentication), but the window-scoped
+# github.gitAuthentication can't be pinned from here and the user's synced
+# settings can re-enable it — which is why git-helper-guard.sh re-asserts the
+# JIT helper as the real guarantee (generacy-ai/cluster-base#66).
+RUN mkdir -p /home/node/.vscode-server/data/Machine \
+ && chown -R node:node /home/node/.vscode-server
+COPY --chown=node:node code-server-settings.json \
+     /home/node/.vscode-server/data/Machine/settings.json
+
 # +============================================================================+
 # |  Customize below: add your project's system dependencies                    |
 # |                                                                             |
