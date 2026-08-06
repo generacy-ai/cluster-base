@@ -8,6 +8,11 @@ log() {
 
 log "Starting orchestrator setup..."
 
+# Give this container its own ~/.claude.json before anything writes to it.
+# Must run before `generacy setup auth` / `setup build`, which populate
+# mcpServers — see seed-claude-config.sh for why the file is no longer shared.
+bash /usr/local/bin/seed-claude-config.sh || true
+
 # Fix mounted host docker socket permissions. The socket appears in the
 # container with the host's docker group GID, which doesn't match the in-
 # container `docker` group and isn't predictable across hosts (varies on

@@ -25,6 +25,11 @@ fi
 
 log "Starting worker setup..."
 
+# Give this container its own ~/.claude.json before anything writes to it.
+# Must run before `generacy setup auth` / `setup build`, which populate
+# mcpServers — see seed-claude-config.sh for why the file is no longer shared.
+bash /usr/local/bin/seed-claude-config.sh || true
+
 # Source wizard-delivered credentials persisted by a prior bootstrap (written
 # by control-plane's bootstrap-complete handler — see generacy-ai/generacy#589).
 # On an already-bootstrapped cluster GH_TOKEN lives only in this file; without
