@@ -8,6 +8,11 @@ log() {
 
 log "Starting orchestrator setup..."
 
+# Give this container its own ~/.claude.json before anything writes to it.
+# Must run before `generacy setup auth` / `setup build`, which populate
+# mcpServers — see seed-claude-config.sh for why the file is no longer shared.
+bash /usr/local/bin/seed-claude-config.sh || true
+
 # Fix mounted host docker socket permissions. The socket appears in the
 # container with the host's docker group GID, which doesn't match the in-
 # container `docker` group and isn't predictable across hosts (varies on
@@ -100,6 +105,11 @@ install_packages() {
     "@generacy-ai/generacy": "*",
     "@generacy-ai/agency": "*",
     "@generacy-ai/agency-plugin-spec-kit": "*",
+    "@generacy-ai/agency-plugin-git": "*",
+    "@generacy-ai/agency-plugin-docker": "*",
+    "@generacy-ai/agency-plugin-npm": "*",
+    "@generacy-ai/agency-plugin-firebase": "*",
+    "@generacy-ai/agency-plugin-humancy": "*",
     "@generacy-ai/cluster-relay": "*",
     "@generacy-ai/control-plane": "*",
     "@generacy-ai/orchestrator": "*"
@@ -107,6 +117,15 @@ install_packages() {
 }
 EOF
 
+    # The agency-plugin-* set is what gives agents tools. Installing only
+    # spec-kit left clusters with 11 tools where a source build has 49 — no
+    # source_control.*, run.*, build.*, test.* or humancy.* at all, so agents
+    # shelled out to raw bash for git, docker, builds and tests.
+    #
+    # Safe to keep in the critical install rather than best-effort (as cockpit
+    # is): the plugins are published from the agency monorepo in lockstep with
+    # @generacy-ai/agency itself, which is already critical here. If
+    # agency@${CHANNEL} resolves, its sibling plugins resolve too.
     log "Installing @generacy-ai packages (channel: ${CHANNEL}) into ${SHARED_PACKAGES}..."
     npm install \
         --prefix "${SHARED_PACKAGES}" \
@@ -114,6 +133,11 @@ EOF
         "@generacy-ai/generacy@${CHANNEL}" \
         "@generacy-ai/agency@${CHANNEL}" \
         "@generacy-ai/agency-plugin-spec-kit@${CHANNEL}" \
+        "@generacy-ai/agency-plugin-git@${CHANNEL}" \
+        "@generacy-ai/agency-plugin-docker@${CHANNEL}" \
+        "@generacy-ai/agency-plugin-npm@${CHANNEL}" \
+        "@generacy-ai/agency-plugin-firebase@${CHANNEL}" \
+        "@generacy-ai/agency-plugin-humancy@${CHANNEL}" \
         "@generacy-ai/cluster-relay@${CHANNEL}" \
         "@generacy-ai/control-plane@${CHANNEL}" \
         "@generacy-ai/orchestrator@${CHANNEL}" \
